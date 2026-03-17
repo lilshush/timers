@@ -2,10 +2,37 @@
  * Beeping timer buzz controller using Web Audio API.
  * Produces short beeps that get faster and louder as the alert escalates.
  * No audio files required — built entirely from oscillators.
+ *
+ * iOS/Safari requires AudioContext to be created and resumed from a user
+ * gesture. We keep a single shared context, unlock it on first tap/click,
+ * and resume it every time we start buzzing (iOS re-suspends on tab switch).
  */
+
+// ─── Shared AudioContext ──────────────────────────────────────────────────────
+
+let sharedCtx = null
+
+function getCtx() {
+  if (!sharedCtx) {
+    sharedCtx = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  return sharedCtx
+}
+
+// Unlock on the very first user interaction — required by iOS/Safari.
+function unlockOnGesture() {
+  try {
+    const ctx = getCtx()
+    if (ctx.state === 'suspended') ctx.resume()
+  } catch {}
+}
+document.addEventListener('touchstart', unlockOnGesture, { passive: true })
+document.addEventListener('click', unlockOnGesture)
+
+// ─── BuzzController ───────────────────────────────────────────────────────────
+
 export class BuzzController {
   constructor() {
-    this.ctx = null
     this.oscillator = null
     this.gain = null
     this.active = false
@@ -16,12 +43,15 @@ export class BuzzController {
   start() {
     if (this.active) return
     try {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)()
-      this.oscillator = this.ctx.createOscillator()
-      this.gain = this.ctx.createGain()
+      const ctx = getCtx()
+      // Resume in case iOS suspended the context (e.g. after tab switch)
+      if (ctx.state === 'suspended') ctx.resume()
+
+      this.oscillator = ctx.createOscillator()
+      this.gain = ctx.createGain()
 
       this.oscillator.connect(this.gain)
-      this.gain.connect(this.ctx.destination)
+      this.gain.connect(ctx.destination)
 
       // Square wave at 880 Hz — sharp, attention-grabbing timer beep
       this.oscillator.type = 'square'
@@ -44,13 +74,14 @@ export class BuzzController {
   _scheduleBeep() {
     if (!this.active) return
 
+    const ctx = getCtx()
     const vol = this._volume
     // Beep interval shrinks as volume grows: 2000 ms → 250 ms
     const intervalMs = Math.round(2000 - vol * 1750)
     const beepDuration = 0.07 // 70 ms tone burst
 
-    if (this.ctx && this.gain) {
-      const now = this.ctx.currentTime
+    if (this.gain) {
+      const now = ctx.currentTime
       // Silence → tone burst → silence
       this.gain.gain.cancelScheduledValues(now)
       this.gain.gain.setValueAtTime(0, now)
@@ -75,20 +106,16 @@ export class BuzzController {
     clearTimeout(this._beepTimer)
     this._beepTimer = null
     try {
-      this.gain?.gain.cancelScheduledValues(this.ctx.currentTime)
-      this.gain?.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05)
+      const ctx = getCtx()
+      this.gain?.gain.cancelScheduledValues(ctx.currentTime)
+      this.gain?.gain.setTargetAtTime(0, ctx.currentTime, 0.05)
       setTimeout(() => {
-        try {
-          this.oscillator?.stop()
-          this.ctx?.close()
-        } catch {}
-        this.ctx = null
+        try { this.oscillator?.stop() } catch {}
         this.oscillator = null
         this.gain = null
         this.active = false
       }, 200)
     } catch {
-      this.ctx = null
       this.oscillator = null
       this.gain = null
       this.active = false
