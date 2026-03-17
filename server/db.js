@@ -7,7 +7,10 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const dataDir = join(__dirname, 'data')
+// Vercel serverless has a read-only bundle filesystem; use /tmp for writes
+const dataDir = process.env.VERCEL
+  ? '/tmp/timer-data'
+  : join(__dirname, 'data')
 const dbPath = join(dataDir, 'db.json')
 
 mkdirSync(dataDir, { recursive: true })
