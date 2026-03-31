@@ -21,7 +21,7 @@ export function getAlertState(elapsedMs, alert) {
 
     if (elapsedMs >= buzzStart && elapsedMs < buzzEnd) {
       const step = Math.floor((elapsedMs - buzzStart) / STEP_MS)
-      const rampProgress = Math.min(1.0, (step + 1) / TOTAL_STEPS)
+      const rampProgress = Math.min(1.0, 0.3 + 0.7 * step / (TOTAL_STEPS - 1))
       return { buzzing: true, volume: rampProgress, occurrence: n, occurrenceTime }
     }
     return { buzzing: false, volume: 0, occurrence: n, occurrenceTime }
@@ -37,7 +37,7 @@ export function getAlertState(elapsedMs, alert) {
   }
 
   const step = Math.floor((elapsedMs - buzzStart) / STEP_MS)
-  const rampProgress = Math.min(1.0, (step + 1) / TOTAL_STEPS)
+  const rampProgress = Math.min(1.0, 0.3 + 0.7 * step / (TOTAL_STEPS - 1))
   return { buzzing: true, volume: rampProgress, occurrence: 0, occurrenceTime: alertElapsedMs }
 }
 

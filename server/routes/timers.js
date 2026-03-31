@@ -94,7 +94,9 @@ router.post('/timers/:id/start', (req, res) => {
   if (!timer) return res.status(404).json({ error: 'Timer not found' })
   if (timer.status === 'ACTIVE') return res.status(400).json({ error: 'Already active' })
 
-  updateTimer(req.params.id, { status: 'ACTIVE', started_at: Date.now() })
+  const raw = Number(req.body?.initial_elapsed_ms) || 0
+  const initialElapsedMs = Math.max(0, Math.min(raw, 48 * 60 * 60 * 1000)) // cap at 48h
+  updateTimer(req.params.id, { status: 'ACTIVE', started_at: Date.now() - initialElapsedMs })
   res.json(getTimerWithAlerts(req.params.id))
 })
 

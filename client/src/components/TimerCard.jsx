@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatHMS, formatHM } from '../utils/formatTime.js'
+import { formatHMS, formatHM, hmToMs } from '../utils/formatTime.js'
 import { getNextAlert } from '../utils/alertLogic.js'
+import { AlertTimeInput } from './AlertTimeInput.jsx'
 import { AlertList } from './AlertList.jsx'
 import { DismissBar } from './DismissBar.jsx'
 import { ConfirmDialog } from './ConfirmDialog.jsx'
@@ -17,6 +18,7 @@ export function TimerCard({ timer, getNow, buzzingAlert, onStart, onStop, onDele
   const [showDup, setShowDup] = useState(false)
   const [dupName, setDupName] = useState('')
   const [showEdit, setShowEdit] = useState(false)
+  const [startOffset, setStartOffset] = useState({ hours: 0, minutes: 0 })
   const intervalRef = useRef(null)
 
   const isActive = timer.status === 'ACTIVE'
@@ -32,6 +34,8 @@ export function TimerCard({ timer, getNow, buzzingAlert, onStart, onStop, onDele
     update()
     if (isActive) {
       intervalRef.current = setInterval(update, 250)
+    } else {
+      setStartOffset({ hours: 0, minutes: 0 })
     }
     return () => clearInterval(intervalRef.current)
   }, [isActive, timer.started_at, getNow])
@@ -125,7 +129,7 @@ export function TimerCard({ timer, getNow, buzzingAlert, onStart, onStop, onDele
               <motion.button
                 className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-indigo-500 text-white font-display font-600 text-xs hover:bg-indigo-400 transition-all shadow-[0_0_16px_rgba(99,102,241,0.35)]"
                 whileTap={{ scale: 0.96 }}
-                onClick={e => { e.stopPropagation(); onStart(timer.id) }}
+                onClick={e => { e.stopPropagation(); onStart(timer.id, hmToMs(startOffset.hours, startOffset.minutes)) }}
               >
                 <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
                   <path d="M0 0L10 6L0 12V0Z"/>
@@ -186,8 +190,14 @@ export function TimerCard({ timer, getNow, buzzingAlert, onStart, onStop, onDele
               {formatHMS(elapsed)}
             </div>
           ) : (
-            <div className="timer-digit font-mono text-4xl sm:text-5xl font-300 text-white/20 leading-none">
-              00:00:00
+            <div>
+              <div className="timer-digit font-mono text-4xl sm:text-5xl font-300 text-white/20 leading-none">
+                00:00:00
+              </div>
+              <div className="flex items-center gap-2 mt-2" onClick={e => e.stopPropagation()}>
+                <span className="font-display text-xs text-white/30 uppercase tracking-widest whitespace-nowrap">Start from</span>
+                <AlertTimeInput value={startOffset} onChange={setStartOffset} />
+              </div>
             </div>
           )}
         </div>

@@ -42,8 +42,12 @@ export function useTimers(sessionId) {
     return timer
   }, [sessionId, fetchTimers])
 
-  const startTimer = useCallback(async (timerId) => {
-    const res = await fetch(`/api/timers/${timerId}/start`, { method: 'POST' })
+  const startTimer = useCallback(async (timerId, initialElapsedMs = 0) => {
+    const res = await fetch(`/api/timers/${timerId}/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initial_elapsed_ms: initialElapsedMs })
+    })
     if (!res.ok) throw new Error('Failed to start timer')
     const timer = await res.json()
     setTimers(prev => prev.map(t => t.id === timerId ? timer : t))
